@@ -1,0 +1,18 @@
+{
+  "name": "ashen-crown",
+  "private": true,
+  "type": "module",
+  "title": "Ashen Crown",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test scripts/*.test.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

@@ -24,8 +24,9 @@ kill the **shard-bearers** and decide what to do with the Crown.
 2. **Bosses are the heart.** Each one is a memorable fight in a beautiful arena, with a sad story behind it.
 3. **Exploration is rewarded.** See something on the horizon → go there → find something worth it.
 4. **Beauty in decay.** Everything was once magnificent. Mostly grey; gold means something matters.
-5. **Shippable by a tiny team.** Stylized, low-poly, foggy and data-driven. Hand-made only where it counts (bosses,
-   legacy dungeons).
+5. **Shippable by a tiny team.** Stylized, foggy and data-driven. Hand-made only where it counts (bosses,
+   legacy dungeons). *(Changed in phase 0.1 by the owner, who asked for the knight to be "more high poly": models are
+   smooth and finely divided, not low-poly. Detail budget goes to the player, bosses and landmarks first.)*
 
 ## 3. The mood: Ashen Gold
 

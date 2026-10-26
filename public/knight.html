@@ -9,10 +9,12 @@
   #title { left: 16px; top: 16px; padding: 10px 16px; letter-spacing: 0.08em; }
   #title b { display: block; font-weight: normal; font-size: 19px; color: #e8b54a; letter-spacing: 0.18em; text-transform: uppercase; }
   #title small { opacity: 0.75; font-style: italic; }
-  #bar { left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; max-width: calc(100vw - 48px); }
+  #bar { left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; max-width: min(960px, calc(100vw - 48px)); }
   #clips { display: contents; }
   button { padding: 8px 14px; background: transparent; color: inherit; font: inherit; border: 1px solid rgba(239, 228, 207, 0.25); cursor: pointer; }
   button:hover { border-color: rgba(232, 181, 74, 0.7); }
+  button:disabled { opacity: 0.32; cursor: default; border-color: rgba(239, 228, 207, 0.12); }
+  .sep { width: 100%; height: 0; }
   button.on { color: #2a2126; background: #e8b54a; border-color: #e8b54a; }
   .key { opacity: 0.55; font-size: 12px; margin-right: 7px; }
   #help { right: 16px; top: 16px; padding: 8px 12px; font-size: 12px; font-style: italic; opacity: 0.85; }
@@ -20,6 +22,6 @@
 </style></head>
 <body><div id="view"></div>
 <div id="title" class="panel"><b>Ashen Crown</b><small>The risen knight · pose rig, phase 0.1</small></div>
-<div id="help" class="panel">Drag to orbit · 1–5 clips · S slow motion<br>Gamepad: bumpers / D-pad clips · Y slow motion</div>
-<div id="bar" class="panel"><div id="clips"></div><button id="slow"><span class="key">S</span>Slow motion</button></div>
+<div id="help" class="panel">Drag to orbit · number keys moves · Q sword · E shield · S slow motion<br>Gamepad: bumpers / D-pad moves · X sword · B shield · Y slow motion</div>
+<div id="bar" class="panel"><div id="clips"></div><span class="sep"></span><button id="sword"><span class="key">Q</span>Sword</button><button id="shield"><span class="key">E</span>Shield</button><button id="slow"><span class="key">S</span>Slow motion</button></div>
 <script type="module" src="build/knightGallery.js"></script></body></html>

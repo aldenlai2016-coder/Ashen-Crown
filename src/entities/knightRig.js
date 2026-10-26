@@ -239,7 +239,24 @@ export class KnightRig {
     this.mover.position.set(0, 0, p.root.z);
     this.pivot.rotation.x = p.root.pitch;
     this._ground();
+    if (p.root.lift) { this.mover.position.y += p.root.lift; this.root.updateMatrixWorld(true); }
     this._cloth(dt, p);
+  }
+
+  /** Show or hide the sword and the shield (what the knight is holding decides its moves: knightPoses MOVESETS). */
+  setGear({ sword = this.sword.visible, shield = this.shield.visible } = {}) {
+    this.sword.visible = sword;
+    this.shield.visible = shield;
+  }
+  get gear() { return { sword: this.sword.visible, shield: this.shield.visible }; }
+
+  /** Where a part is in the world now: 'tip' (of the sword), 'shield', 'fist' (right), 'foot' (right toe). */
+  point(at, out = new THREE.Vector3()) {
+    const [obj, local] = {
+      tip: [this.sword, [0, -0.98, 0]], shield: [this.shield, [0, 0, 0.05]],
+      fist: [this.joints.handR, [0, -0.09, 0]], foot: [this.joints.footR, [0, -0.06, 0.2]],
+    }[at];
+    return out.set(...local).applyMatrix4(obj.matrixWorld);
   }
 
   // keep the lowest point of the body on the ground (y = 0): planted feet in every pose, and the roll rolls ON the

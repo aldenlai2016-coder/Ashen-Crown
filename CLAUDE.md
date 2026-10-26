@@ -37,10 +37,19 @@ palette rule "**follow the gold.** The world is desaturated. Gold marks shrines,
 - `src/entities/knightRig.js`: the knight as a **procedural pose rig** (plan §11: "Start with the procedural pose rig
   (fast to iterate)"): lathed armour, layered plates, fingered gauntlets, a one-piece cloak bent on three springs, a
   longsword and a heater shield. The rig keeps the body's lowest point on the ground every frame.
-- `src/entities/knightPoses.js`: the clips as data (idle, walk, light attack, roll); node-tested by
-  `scripts/poses.test.mjs`. Sign conventions are in the file's header.
-- `src/tools/knightGallery.js` + `public/knight.html`: the dev gallery (1–5 clips, S slow motion; gamepad bumpers /
-  D-pad, Y). `?clip=attack&t=0.6&cam=x,y,z,tx,ty,tz` freezes a pose for screenshots.
+- `src/entities/knightPoses.js`: the clips as data; node-tested by `scripts/poses.test.mjs`. Sign conventions are in
+  the file's header. Moves: idle, walk, roll; with a sword: light attack, heavy attack, smash, thrust; with a shield:
+  bash, guard, parry; with no sword the light / heavy buttons give a punch / kick (`MOVESETS`, owner: "add more moves
+  like heavy attack, smash … if its holding a weapons"). A clip's `needs` lists the gear it needs, `events` the moments
+  effects fire.
+- Arms are aimed, not hand-tuned: a key's `aim` says where the hilt + tip, fist, or shield centre + facing should be,
+  and `node scripts/solveArms.mjs [clip]` solves the angles into `src/entities/knightArms.json` (run it after
+  changing a key's body pose or aim, then look at the move).
+- `src/entities/knightFx.js`: hit feel (plan §5: "hit-stop, camera shake, impact flashes, sparks on a guard"): dust
+  ring + ash on ground impacts, sparks on clangs, a gold flash on a parry, camera shake.
+- `src/tools/knightGallery.js` + `public/knight.html`: the dev gallery (number keys moves, Q sword, E shield, S slow
+  motion; gamepad bumpers / D-pad moves, X sword, B shield, Y slow motion). `?clip=heavy&t=1.0&cam=x,y,z,tx,ty,tz&
+  gear=shield&nohud=1` freezes a pose for screenshots.
 - `src/world/toon.js`: copied from Power Battlegrounds, retuned for Ashen Gold (softer brown-violet ink, less
   saturation).
 

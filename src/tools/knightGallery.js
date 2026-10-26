@@ -1,12 +1,15 @@
-// Dev-only: the KNIGHT gallery (/knight.html): the risen knight on a patch of ash under a low sun, looping one clip
-// (idle, walk, light attack, roll) or all four side by side. Slow motion on S (or Y on a gamepad), clips on 1–5
-// (or the bumpers / D-pad). For tuning the poses in src/entities/knightPoses.js.
+// Dev-only: the KNIGHT gallery (/knight.html): the risen knight on a patch of ash under a low sun, looping one move or
+// every move side by side, with the hit effects. What it holds decides its moves: no sword turns the light / heavy
+// attack into a punch / kick and greys out the sword moves; no shield greys out bash, guard and parry.
+// Keys: 1–9, 0 and - for the moves, Q sword, E shield, S slow motion. Gamepad: bumpers / D-pad step through the moves,
+// X sword, B shield, Y slow motion. For tuning the poses in src/entities/knightPoses.js.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { installToonShading, ToonPost } from '../world/toon.js';
 import { KnightRig } from '../entities/knightRig.js';
-import { CLIPS } from '../entities/knightPoses.js';
+import { CLIPS, MOVESETS } from '../entities/knightPoses.js';
+import { KnightFx } from '../entities/knightFx.js';
 
 // Ashen Gold (docs/GAME_PLAN.md §3)
 const PALETTE = { ash: '#8a8580', gold: '#e8b54a', haze: '#e9dcc4', shadow: '#3a2e35', ember: '#c4492c', teal: '#5f8a86' };
@@ -91,44 +94,82 @@ ashGeo.setAttribute('position', new THREE.BufferAttribute(ashPos, 3));
 const ash = new THREE.Points(ashGeo, new THREE.PointsMaterial({ color: '#d9d2c6', size: 0.035, transparent: true, opacity: 0.8, depthWrite: false }));
 scene.add(ash);
 
-// ---- the knights ----
-const ORDER = ['idle', 'walk', 'attack', 'roll'];
-const knights = ORDER.map(() => { const k = new KnightRig(); scene.add(k.root); return k; });
+// ---- moves + gear ----
+// a move is a clip, or 'light' / 'heavy' (whichever clip the weapon in hand gives: MOVESETS)
+const MOVES = [
+  ['idle', 'Idle'], ['walk', 'Walk'], ['roll', 'Roll'], ['light', 'Light attack'], ['heavy', 'Heavy attack'],
+  ['smash', 'Smash'], ['thrust', 'Thrust'], ['bash', 'Shield bash'], ['block', 'Guard'], ['parry', 'Parry'], ['all', 'All moves'],
+];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'];
+const gear = { sword: true, shield: true };
+const clipOf = (move) => (move === 'light' || move === 'heavy') ? MOVESETS[gear.sword ? 'sword' : 'unarmed'][move] : move;
+const canDo = (move) => move === 'all' || (CLIPS[clipOf(move)].needs ?? []).every((g) => gear[g]);
 let mode = 'idle', slow = false;
 
+const fx = new KnightFx(scene);
+const knights = [];
+const knight = (i) => {
+  while (knights.length <= i) { const k = new KnightRig(); scene.add(k.root); k.lastT = 0; knights.push(k); }
+  return knights[i];
+};
+
 function layout() {
+  if (!canDo(mode)) mode = 'idle';
   const lineup = mode === 'all';
-  knights.forEach((k, i) => {
-    k.root.visible = lineup || i === 0;
-    k.root.position.set(lineup ? (i - 1.5) * 1.9 : 0, 0, lineup && ORDER[i] === 'roll' ? -1.6 : (!lineup && mode === 'roll') ? -1.2 : 0);
-    k.play(CLIPS[lineup ? ORDER[i] : mode], k.current ? 0.25 : 0);
+  const list = lineup ? MOVES.filter(([m]) => m !== 'all' && canDo(m)).map(([m]) => m) : [mode];
+  const cols = Math.min(list.length, 5), rows = Math.ceil(list.length / cols);
+  list.forEach((m, i) => {
+    const k = knight(i), clip = CLIPS[clipOf(m)];
+    const c = i % cols, r = Math.floor(i / cols);
+    // travelling moves start further back so they end in view
+    const back = (clip.keys.at(-1).root.z ?? 0) * 0.5;
+    k.root.visible = true;
+    k.root.position.set(lineup ? (c - (cols - 1) / 2) * 2.1 : 0, 0, (lineup ? (r - (rows - 1) / 2) * -3.2 : 0) - back);
+    k.setGear(gear);
+    if (k.clip !== clip) { k.play(clip, k.current ? 0.25 : 0); k.lastT = 0; }
   });
-  if (lineup) { camera.position.set(2.6, 2.1, 8.8); controls.target.set(0, 0.95, 0); }
-  else if (!camera.userData.placed) { camera.position.set(2.4, 1.7, 4.2); controls.target.set(0, 1.0, 0); }
+  for (let i = list.length; i < knights.length; i++) knights[i].root.visible = false;
+  if (lineup) { camera.position.set(3.2, 4.2, 12.5); controls.target.set(0, 0.9, -1.2); }
+  else if (!camera.userData.placed) { camera.position.set(2.6, 1.8, 4.6); controls.target.set(0, 1.0, 0); }
   camera.userData.placed = !lineup;
-  for (const b of buttons.children) b.classList.toggle('on', b.dataset.mode === mode);
+  for (const b of buttons.children) {
+    b.classList.toggle('on', b.dataset.mode === mode);
+    b.disabled = !canDo(b.dataset.mode);
+    const m = b.dataset.mode;
+    if (m === 'light' || m === 'heavy') b.lastChild.textContent = CLIPS[clipOf(m)].label;
+  }
+  swordBtn.classList.toggle('on', gear.sword);
+  shieldBtn.classList.toggle('on', gear.shield);
 }
 
 // ---- UI ----
 const buttons = document.getElementById('clips');
-const MODES = [...ORDER.map((m) => [m, CLIPS[m].label]), ['all', 'All four']];
-MODES.forEach(([m, label], i) => {
+MOVES.forEach(([m, label], i) => {
   const b = document.createElement('button');
   b.dataset.mode = m;
-  b.innerHTML = `<span class="key">${i + 1}</span>${label}`;
+  b.innerHTML = `<span class="key">${KEYS[i]}</span><span>${label}</span>`;
   b.onclick = () => { mode = m; layout(); };
   buttons.append(b);
 });
+const swordBtn = document.getElementById('sword'), shieldBtn = document.getElementById('shield');
+const toggle = (g) => { gear[g] = !gear[g]; for (const k of knights) k.clip = null; layout(); };
+swordBtn.onclick = () => toggle('sword');
+shieldBtn.onclick = () => toggle('shield');
 const slowBtn = document.getElementById('slow');
 const setSlow = (v) => { slow = v; slowBtn.classList.toggle('on', slow); };
 slowBtn.onclick = () => setSlow(!slow);
+const pick = (m) => { if (canDo(m)) { mode = m; layout(); } };
 addEventListener('keydown', (e) => {
-  const n = Number(e.key);
-  if (n >= 1 && n <= MODES.length) { mode = MODES[n - 1][0]; layout(); }
-  if (e.key === 's' || e.key === 'S') setSlow(!slow);
+  const i = KEYS.indexOf(e.key);
+  if (i >= 0) pick(MOVES[i][0]);
+  const k = e.key.toLowerCase();
+  if (k === 's') setSlow(!slow);
+  if (k === 'q') toggle('sword');
+  if (k === 'e') toggle('shield');
 });
 
-// gamepad: first-class from M0 (§15 rule 3). Bumpers / D-pad left-right step through the clips, Y = slow motion.
+// gamepad: first-class from M0 (§15 rule 3). Bumpers / D-pad left-right step through the moves, X sword, B shield,
+// Y slow motion.
 const padWas = {};
 function pollPad() {
   for (const pad of navigator.getGamepads?.() ?? []) {
@@ -138,10 +179,32 @@ function pollPad() {
       padWas[key] = down;
       return edge;
     };
-    const step = (d) => { const i = MODES.findIndex(([m]) => m === mode); mode = MODES[(i + d + MODES.length) % MODES.length][0]; layout(); };
+    const step = (d) => {
+      let i = MOVES.findIndex(([m]) => m === mode);
+      do i = (i + d + MOVES.length) % MOVES.length; while (!canDo(MOVES[i][0]));
+      pick(MOVES[i][0]);
+    };
     if (pressed(5) || pressed(15)) step(1);
     if (pressed(4) || pressed(14)) step(-1);
+    if (pressed(2)) toggle('sword');
+    if (pressed(1)) toggle('shield');
     if (pressed(3)) setSlow(!slow);
+  }
+}
+
+// a clip's events fire as its time passes them (each loop)
+const at = new THREE.Vector3();
+function fireEvents(k) {
+  const clip = k.clip, d = clip.duration;
+  const from = k.lastT % d, to = k.time % d;
+  k.lastT = k.time;
+  for (const ev of clip.events ?? []) {
+    const crossed = from <= to ? (ev.t > from && ev.t <= to) : (ev.t > from || ev.t <= to);
+    if (!crossed) continue;
+    k.point(ev.at, at);
+    if (ev.type === 'impact') fx.impact(at, ev.big);
+    else if (ev.type === 'clang') fx.clang(at, ev.small);
+    else if (ev.type === 'parry') fx.parry(at);
   }
 }
 
@@ -154,6 +217,8 @@ addEventListener('resize', () => {
 
 const params = new URLSearchParams(location.search);
 if (params.has('clip')) mode = params.get('clip');
+if (params.has('gear')) { const g = params.get('gear'); gear.sword = g.includes('sword'); gear.shield = g.includes('shield'); }
+if (params.has('nohud')) for (const el of document.querySelectorAll('.panel')) el.style.display = 'none';
 layout();
 // ?cam=x,y,z,tx,ty,tz places the camera (for screenshots)
 if (params.has('cam')) { const c = params.get('cam').split(',').map(Number); camera.position.set(c[0], c[1], c[2]); controls.target.set(c[3], c[4], c[5]); }
@@ -161,14 +226,16 @@ if (params.has('cam')) { const c = params.get('cam').split(',').map(Number); cam
 // ?t=0.5 freezes every clip at that time (for screenshots of one pose)
 const freeze = params.has('t') ? Number(params.get('t')) : null;
 const clock = new THREE.Clock();
+const shake = new THREE.Vector3();
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05) * (slow ? 0.2 : 1);
   pollPad();
   for (const k of knights) {
     if (!k.root.visible) continue;
     if (freeze != null) { k.fade = 1; k.time = freeze; k.update(0); for (let i = 0; i < 40; i++) k._cloth(1 / 60, k.current); }
-    else k.update(dt);
+    else { k.update(dt); fireEvents(k); }
   }
+  fx.update(dt);
   const p = ash.geometry.attributes.position;
   for (let i = 0; i < ASH; i++) {
     let y = p.getY(i) - dt * (0.12 + (i % 5) * 0.03);
@@ -178,9 +245,14 @@ function frame() {
     if (p.getX(i) > 12) p.setX(i, -12);
   }
   p.needsUpdate = true;
+  // camera shake from the hit effects: added after the orbit controls place the camera, taken off before they next do
+  camera.position.sub(shake);
   controls.update();
+  const tr = fx.trauma * fx.trauma * 0.06, time = clock.elapsedTime;
+  shake.set(Math.sin(time * 61) * tr, Math.sin(time * 47 + 1) * tr, Math.sin(time * 53 + 2) * tr);
+  camera.position.add(shake);
   if (post) post.render(scene, camera); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 frame();
-window.__gallery = { knights, CLIPS, setMode: (m) => { mode = m; layout(); } };
+window.__gallery = { knights, CLIPS, fx, gear, setMode: (m) => { mode = m; layout(); } };
